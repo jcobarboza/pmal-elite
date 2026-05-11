@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PMAL Elite — Limpar Banco de Questões</title>
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+window.firebaseModules = { initializeApp, getApps, getFirestore, collection, getDocs, writeBatch };
+</script>
+
+<style>
+body{margin:0;background:#020617;color:white;font-family:Arial,sans-serif;padding:24px}
+.container{max-width:860px;margin:auto}
+.card{background:#0f172a;border:1px solid #334155;border-radius:22px;padding:24px;margin-bottom:18px}
+h1{color:#60a5fa}
+textarea,input{width:100%;background:#020617;color:white;border:1px solid #334155;border-radius:14px;padding:12px;margin-top:10px}
+button{border:0;border-radius:14px;padding:14px 18px;font-weight:900;color:white;background:#dc2626;cursor:pointer}
+button:disabled{opacity:.5}
+.log{background:#000;border-radius:14px;padding:14px;white-space:pre-wrap;max-height:320px;overflow:auto}
+.warn{color:#fbbf24}.success{color:#22c55e}.error{color:#ef4444}.info{color:#93c5fd}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>🛡️ PMAL Elite — Limpar Banco de Questões</h1>
+    <p class="warn"><strong>Atenção:</strong> esta ferramenta apaga todos os documentos da coleção <code>questions</code>. Use apenas antes de importar uma nova base.</p>
+
+    <p><strong>1. Cole sua configuração Firebase:</strong></p>
+    <textarea id="firebaseConfig" rows="10">const firebaseConfig = {
+  apiKey: "COLE_AQUI",
+  authDomain: "SEU_AUTH_DOMAIN",
+  projectId: "SEU_PROJECT_ID",
+  storageBucket: "SEU_BUCKET",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};</textarea>
+
+    <p><strong>2. Digite APAGAR para confirmar:</strong></p>
+    <input id="confirmText" placeholder="Digite APAGAR" />
+
+    <br><br>
+    <button id="deleteBtn" onclick="deleteQuestions()">Apagar todas as questões</button>
+  </div>
+
+  <div class="card">
+    <h2>Status</h2>
+    <div class="log" id="log">Aguardando...</div>
+  </div>
+</div>
+
+<script>
+function log(msg,type="info"){
+  const el=document.getElementById("log");
+  const line=document.createElement("div");
+  line.className=type;
+  line.textContent=msg;
+  el.appendChild(line);
+  el.scrollTop=el.scrollHeight;
+}
+function clearLog(){document.getElementById("log").innerHTML=""}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+async function deleteQuestions(){
+  clearLog();
+  const confirmText=document.getElementById("confirmText").value.trim();
+  if(confirmText!=="APAGAR"){
+    log("Confirmação inválida. Digite APAGAR.", "error");
+    return;
+  }
+
+  const ok=confirm("Tem certeza que deseja apagar TODAS as questões da coleção questions?");
+  if(!ok)return;
+
+  document.getElementById("deleteBtn").disabled=true;
+
+  try{
+    const configText=document.getElementById("firebaseConfig").value;
+    const match=configText.match(/\{[\s\S]*\}/);
+    if(!match){log("Configuração Firebase inválida.","error");return;}
+    const firebaseConfig=eval("(" + match[0] + ")");
+
+    const {initializeApp,getApps,getFirestore,collection,getDocs,writeBatch}=window.firebaseModules;
+    const app=getApps().length?getApps()[0]:initializeApp(firebaseConfig);
+    const db=getFirestore(app);
+
+    log("Firebase conectado.","success");
+    log("Lendo coleção questions...","info");
+
+    const snap=await getDocs(collection(db,"questions"));
+    log(`${snap.size} documentos encontrados.`, "info");
+
+    if(!snap.size){
+      log("Nada para apagar.","warn");
+      return;
+    }
+
+    const docs=snap.docs;
+    let deleted=0;
+
+    for(let i=0;i<docs.length;i+=400){
+      const batch=writeBatch(db);
+      const chunk=docs.slice(i,i+400);
+      chunk.forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+      deleted+=chunk.length;
+      log(`Apagados ${deleted}/${docs.length}`, "success");
+      await sleep(300);
+    }
+
+    log("Banco de questões limpo com sucesso.", "success");
+  }catch(err){
+    console.error(err);
+    log("ERRO: "+err.message, "error");
+    log("Se aparecer permission-denied, revise as regras do Firestore.", "warn");
+  }finally{
+    document.getElementById("deleteBtn").disabled=false;
+  }
+}
+</script>
+</body>
+</html>
