@@ -31,6 +31,26 @@ button{border:0;border-radius:20px;padding:17px;font-weight:900;letter-spacing:.
     <div class="card">
       <div class="row"><span class="pill blue" id="status">Conectando ao Firebase...</span><span class="pill amber" id="counter">0/0</span></div>
       <div class="controls">
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+
+  <button
+    onclick="window.open('converter_firestore.html','_blank')"
+    style="
+      background:#16a34a;
+      color:white;
+      border:none;
+      padding:14px 18px;
+      border-radius:16px;
+      font-weight:900;
+      cursor:pointer;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+    "
+  >
+    Importar Questões
+  </button>
+
+</div>
         <label><span class="pill green">Cargo</span><select id="cargoSelect" onchange="changeCargo()"><option value="Soldado">Soldado</option><option value="Oficial">Oficial</option></select></label>
         <label><span class="pill blue">Matéria</span><select id="areaSelect" onchange="changeArea()"><option value="Todas">Todas</option></select></label>
       </div>
