@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMAL Elite — Conversor de Planilha para JSON</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:radial-gradient(circle at top,#172554,#020617 55%);
+  color:white;
+  font-family:Arial,sans-serif;
+  min-height:100vh;
+  padding:20px;
+}
+.app{max-width:920px;margin:auto}
+.header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.logo{width:60px;height:60px;border-radius:20px;background:rgba(37,99,235,.2);border:1px solid rgba(96,165,250,.4);display:flex;align-items:center;justify-content:center;font-size:30px}
+h1{margin:0;color:#60a5fa;font-size:28px}
+.subtitle{margin:4px 0 0;color:#94a3b8}
+.card{background:rgba(15,23,42,.92);border:1px solid #1e293b;border-radius:26px;padding:22px;margin-bottom:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.pill{background:#0b1220;border:1px solid #334155;color:#cbd5e1;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:bold;display:inline-block;margin:2px}
+.blue{color:#bfdbfe;border-color:rgba(96,165,250,.45);background:rgba(37,99,235,.15)}
+.green{color:#bbf7d0;border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.13)}
+.red{color:#fecaca;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.13)}
+.amber{color:#fde68a;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.13)}
+input[type=file]{width:100%;padding:18px;border:1px dashed #60a5fa;border-radius:18px;background:#0b1220;color:#dbeafe;margin-top:14px}
+button{border:0;border-radius:18px;padding:15px 18px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;background:#2563eb;color:white;cursor:pointer;margin-top:12px}
+button.secondary{background:#0b1220;border:1px solid #334155;color:#cbd5e1}
+button:disabled{opacity:.45;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.stat{background:#0b1220;border:1px solid #334155;border-radius:18px;padding:16px;text-align:center}
+.stat small{display:block;color:#94a3b8;font-size:11px;font-weight:bold;text-transform:uppercase}
+.stat b{display:block;font-size:26px;margin-top:6px}
+.log{background:#020617;border:1px solid #334155;border-radius:18px;padding:14px;white-space:pre-wrap;color:#cbd5e1;line-height:1.45;max-height:280px;overflow:auto}
+.file-item{background:#0b1220;border:1px solid #334155;border-radius:16px;padding:13px;margin-top:8px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+a.download{color:#93c5fd;font-weight:bold;text-decoration:none}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+td,th{border:1px solid #334155;padding:8px;text-align:left;font-size:13px}
+th{background:#1d4ed8;color:white}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>PMAL Elite — Conversor</h1>
+      <p class="subtitle">Planilha Mestre → JSONs modulares da pasta questoes/</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="pill blue">Importador automático</span>
+    <span class="pill amber">Cebraspe</span>
+    <span class="pill green">Soldado / Oficial</span>
+
+    <p>Selecione a planilha <strong>PMAL_Elite_Planilha_Mestre_FINAL.xlsx</strong>. O conversor lerá a aba <strong>BANCO_MASTER</strong> e gerará os arquivos JSON por matéria.</p>
+
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <button onclick="processFile()">Converter planilha</button>
+    <button class="secondary" onclick="downloadZip()" id="zipBtn" disabled>Baixar ZIP com todos os JSONs</button>
+  </div>
+
+  <div class="grid">
+    <div class="stat"><small>Questões válidas</small><b id="validCount">0</b></div>
+    <div class="stat"><small>Arquivos gerados</small><b id="fileCount">0</b></div>
+    <div class="stat"><small>Erros encontrados</small><b id="errorCount">0</b></div>
+    <div class="stat"><small>Status</small><b id="status">Aguardando</b></div>
+  </div>
+
+  <div class="card">
+    <h2>Arquivos gerados</h2>
+    <div id="files"></div>
+  </div>
+
+  <div class="card">
+    <h2>Validações e avisos</h2>
+    <div class="log" id="log">Nenhum arquivo processado ainda.</div>
+  </div>
+
+  <div class="card">
+    <h2>Colunas obrigatórias</h2>
+    <table>
+      <thead><tr><th>Campo</th><th>Observação</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>ID único da questão. Ex.: DC-FUND-0001</td></tr>
+        <tr><td>cargo</td><td>Soldado, Oficial ou Soldado, Oficial</td></tr>
+        <tr><td>area</td><td>Matéria. Ex.: Direito Constitucional</td></tr>
+        <tr><td>topic</td><td>Assunto principal</td></tr>
+        <tr><td>subtopic</td><td>Subassunto</td></tr>
+        <tr><td>difficulty</td><td>Fácil, Média ou Alta</td></tr>
+        <tr><td>style</td><td>Cebraspe</td></tr>
+        <tr><td>statement</td><td>Enunciado da questão</td></tr>
+        <tr><td>answer</td><td>Certo ou Errado</td></tr>
+        <tr><td>explanation</td><td>Comentário da questão</td></tr>
+        <tr><td>legalBasis</td><td>Fundamento legal ou gramatical</td></tr>
+        <tr><td>tags</td><td>Separadas por vírgula</td></tr>
+        <tr><td>weight</td><td>Peso numérico. Normalmente 1</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let generatedFiles = {};
+let generatedZip = null;
+
+const areaToFile = {
+  "Língua Portuguesa": "portugues.json",
+  "Lingua Portuguesa": "portugues.json",
+  "Português": "portugues.json",
+  "Portugues": "portugues.json",
+
+  "Matemática": "matematica.json",
+  "Matematica": "matematica.json",
+
+  "Informática": "informatica.json",
+  "Informatica": "informatica.json",
+
+  "Conhecimentos de Alagoas": "conhecimentos-alagoas.json",
+  "Conhecimentos do Estado de Alagoas": "conhecimentos-alagoas.json",
+
+  "Legislação PMAL": "legislacao-pmal.json",
+  "Legislacao PMAL": "legislacao-pmal.json",
+
+  "Legislação Especial": "legislacao-especial.json",
+  "Legislacao Especial": "legislacao-especial.json",
+
+  "Direito Constitucional": "constitucional.json",
+  "Constitucional": "constitucional.json",
+
+  "Direito Administrativo": "administrativo.json",
+  "Administrativo": "administrativo.json",
+
+  "Direitos Humanos": "direitos-humanos.json",
+
+  "Direito Penal": "direito-penal.json",
+  "Penal": "direito-penal.json",
+
+  "Processo Penal": "processo-penal.json",
+  "Direito Processual Penal": "processo-penal.json",
+
+  "Direito Penal Militar": "penal-militar.json",
+  "Penal Militar": "penal-militar.json",
+
+  "Processo Penal Militar": "processo-penal-militar.json",
+  "Direito Processual Penal Militar": "processo-penal-militar.json",
+
+  "Inglês": "ingles.json",
+  "Ingles": "ingles.json",
+
+  "Sociologia": "sociologia.json",
+  "Filosofia": "filosofia.json",
+  "Biologia": "biologia.json",
+  "Física": "fisica.json",
+  "Fisica": "fisica.json",
+  "Química": "quimica.json",
+  "Quimica": "quimica.json"
+};
+
+const requiredColumns = [
+  "id","cargo","area","topic","subtopic","difficulty","style",
+  "statement","answer","explanation","legalBasis","tags","weight"
+];
+
+function setText(id, value){
+  document.getElementById(id).textContent = value;
+}
+
+function log(message){
+  document.getElementById("log").textContent += "\\n" + message;
+}
+
+function reset(){
+  generatedFiles = {};
+  generatedZip = null;
+  document.getElementById("files").innerHTML = "";
+  document.getElementById("log").textContent = "";
+  setText("validCount", "0");
+  setText("fileCount", "0");
+  setText("errorCount", "0");
+  setText("status", "Processando");
+  document.getElementById("zipBtn").disabled = true;
+}
+
+function normalizeHeader(h){
+  return String(h || "").trim();
+}
+
+function normalizeText(v){
+  return String(v ?? "").trim();
+}
+
+function parseCargo(value){
+  const raw = normalizeText(value);
+  if(!raw) return [];
+
+  return raw
+    .split(/[,;|]/)
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(x => {
+      const lower = x.toLowerCase();
+      if(lower.includes("soldado")) return "Soldado";
+      if(lower.includes("oficial")) return "Oficial";
+      return x;
+    });
+}
+
+function parseTags(value){
+  const raw = normalizeText(value);
+  if(!raw) return [];
+  return raw.split(/[,;|]/).map(x => x.trim()).filter(Boolean);
+}
+
+function normalizeAnswer(value){
+  const v = normalizeText(value).toLowerCase();
+  if(v === "c" || v === "certo" || v === "correto") return "Certo";
+  if(v === "e" || v === "errado" || v === "incorreto") return "Errado";
+  return normalizeText(value);
+}
+
+function fileNameForArea(area){
+  return areaToFile[area] || slug(area) + ".json";
+}
+
+function slug(text){
+  return normalizeText(text)
+    .toLowerCase()
+    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function validateRow(row, index){
+  const errors = [];
+
+  if(!row.id) errors.push("sem id");
+  if(!row.cargo || !row.cargo.length) errors.push("sem cargo");
+  if(!row.area) errors.push("sem area");
+  if(!row.topic) errors.push("sem topic");
+  if(!row.statement) errors.push("sem statement");
+  if(!["Certo","Errado"].includes(row.answer)) errors.push("answer deve ser Certo ou Errado");
+
+  return errors;
+}
+
+async function processFile(){
+  reset();
+
+  const input = document.getElementById("fileInput");
+  if(!input.files.length){
+    setText("status", "Erro");
+    log("Selecione uma planilha .xlsx primeiro.");
+    return;
+  }
+
+  const file = input.files[0];
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+
+  if(!workbook.SheetNames.includes("BANCO_MASTER")){
+    setText("status", "Erro");
+    log("A planilha precisa conter a aba BANCO_MASTER.");
+    return;
+  }
+
+  const sheet = workbook.Sheets["BANCO_MASTER"];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+  if(!rows.length){
+    setText("status", "Vazio");
+    log("A aba BANCO_MASTER está vazia.");
+    return;
+  }
+
+  const headers = Object.keys(rows[0]).map(normalizeHeader);
+  const missing = requiredColumns.filter(col => !headers.includes(col));
+
+  if(missing.length){
+    setText("status", "Erro");
+    log("Colunas obrigatórias ausentes: " + missing.join(", "));
+    return;
+  }
+
+  let validCount = 0;
+  let errorCount = 0;
+  const seenIds = new Set();
+  const grouped = {};
+
+  rows.forEach((raw, idx) => {
+    const rowNumber = idx + 2;
+
+    const q = {
+      id: normalizeText(raw.id),
+      cargo: parseCargo(raw.cargo),
+      area: normalizeText(raw.area),
+      topic: normalizeText(raw.topic),
+      subtopic: normalizeText(raw.subtopic),
+      difficulty: normalizeText(raw.difficulty || "Média"),
+      style: normalizeText(raw.style || "Cebraspe"),
+      statement: normalizeText(raw.statement),
+      answer: normalizeAnswer(raw.answer),
+      explanation: normalizeText(raw.explanation),
+      legalBasis: normalizeText(raw.legalBasis),
+      tags: parseTags(raw.tags),
+      weight: Number(raw.weight || 1)
+    };
+
+    if(!q.id && !q.statement) return;
+
+    const errors = validateRow(q, rowNumber);
+
+    if(seenIds.has(q.id)){
+      errors.push("id duplicado");
+    }
+
+    if(errors.length){
+      errorCount++;
+      log(`Linha ${rowNumber}: ${errors.join("; ")}`);
+      return;
+    }
+
+    seenIds.add(q.id);
+
+    const fileName = fileNameForArea(q.area);
+
+    if(!grouped[fileName]) grouped[fileName] = [];
+    grouped[fileName].push(q);
+    validCount++;
+  });
+
+  generatedFiles = grouped;
+
+  setText("validCount", validCount);
+  setText("fileCount", Object.keys(grouped).length);
+  setText("errorCount", errorCount);
+  setText("status", errorCount ? "Com avisos" : "Concluído");
+
+  renderFiles();
+  await buildZip();
+
+  if(validCount){
+    document.getElementById("zipBtn").disabled = false;
+  }
+
+  if(!errorCount){
+    log("Conversão concluída sem erros.");
+  }
+}
+
+function renderFiles(){
+  const box = document.getElementById("files");
+  box.innerHTML = "";
+
+  Object.entries(generatedFiles).forEach(([fileName, data]) => {
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const div = document.createElement("div");
+    div.className = "file-item";
+    div.innerHTML = `
+      <div>
+        <strong>${fileName}</strong><br>
+        <span class="pill green">${data.length} questões</span>
+      </div>
+      <a class="download" download="${fileName}" href="${url}">Baixar</a>
+    `;
+    box.appendChild(div);
+  });
+}
+
+async function buildZip(){
+  const zip = new JSZip();
+  const folder = zip.folder("questoes");
+
+  Object.entries(generatedFiles).forEach(([fileName, data]) => {
+    folder.file(fileName, JSON.stringify(data, null, 2));
+  });
+
+  generatedZip = await zip.generateAsync({ type: "blob" });
+}
+
+function downloadZip(){
+  if(!generatedZip) return;
+
+  const url = URL.createObjectURL(generatedZip);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "questoes_pmal_elite.zip";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
