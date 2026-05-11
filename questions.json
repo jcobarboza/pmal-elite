@@ -1,0 +1,30 @@
+[
+  {
+    "id": "DC-FUND-0001",
+    "cargo": ["Soldado", "Oficial"],
+    "area": "Direito Constitucional",
+    "topic": "Direitos Fundamentais",
+    "difficulty": "Média",
+    "style": "Cebraspe",
+    "statement": "Os direitos e garantias fundamentais previstos na Constituição Federal possuem caráter absoluto.",
+    "answer": "Errado",
+    "explanation": "Os direitos fundamentais não possuem caráter absoluto, podendo sofrer limitações em razão de outros direitos e valores constitucionais.",
+    "legalBasis": "Constituição Federal, art. 5º.",
+    "tags": ["direitos fundamentais", "constituição", "artigo 5"],
+    "weight": 1
+  },
+  {
+    "id": "DA-PODER-0001",
+    "cargo": ["Soldado", "Oficial"],
+    "area": "Direito Administrativo",
+    "topic": "Poderes Administrativos",
+    "difficulty": "Média",
+    "style": "Cebraspe",
+    "statement": "O poder disciplinar permite à Administração Pública aplicar sanções a servidores e particulares que possuam vínculo jurídico específico com ela.",
+    "answer": "Certo",
+    "explanation": "O poder disciplinar alcança servidores públicos e particulares sujeitos à disciplina interna da Administração por vínculo específico.",
+    "legalBasis": "Regime jurídico-administrativo; poder disciplinar da Administração Pública.",
+    "tags": ["poder disciplinar", "administração pública"],
+    "weight": 1
+  }
+]
