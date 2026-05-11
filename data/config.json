@@ -1,0 +1,55 @@
+</> JSON
+{
+  "version": "2.0.0",
+
+  "defaultCargo": "Soldado",
+
+  "examStyle": "Cebraspe",
+
+  "scoreRule": {
+    "right": 1,
+    "wrong": -1,
+    "blank": 0
+  },
+
+  "questionFiles": {
+
+    "Soldado": [
+      "questoes/portugues.json",
+      "questoes/matematica.json",
+      "questoes/informatica.json",
+      "questoes/conhecimentos-alagoas.json",
+      "questoes/legislacao-pmal.json",
+      "questoes/legislacao-especial.json",
+      "questoes/constitucional.json",
+      "questoes/administrativo.json",
+      "questoes/direitos-humanos.json",
+      "questoes/direito-penal.json",
+      "questoes/processo-penal.json",
+      "questoes/penal-militar.json",
+      "questoes/processo-penal-militar.json"
+    ],
+
+    "Oficial": [
+      "questoes/portugues.json",
+      "questoes/matematica.json",
+      "questoes/informatica.json",
+      "questoes/conhecimentos-alagoas.json",
+      "questoes/legislacao-pmal.json",
+      "questoes/legislacao-especial.json",
+      "questoes/constitucional.json",
+      "questoes/administrativo.json",
+      "questoes/direitos-humanos.json",
+      "questoes/direito-penal.json",
+      "questoes/processo-penal.json",
+      "questoes/penal-militar.json",
+      "questoes/processo-penal-militar.json",
+      "questoes/ingles.json",
+      "questoes/sociologia.json",
+      "questoes/filosofia.json",
+      "questoes/biologia.json",
+      "questoes/fisica.json",
+      "questoes/quimica.json"
+    ]
+  }
+}
