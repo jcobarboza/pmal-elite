@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMAL Elite — Firestore Edition</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#172554,#020617 55%);color:white;font-family:Arial,sans-serif;min-height:100vh;padding:16px;padding-bottom:92px}
+.app{max-width:760px;margin:auto}.header{display:flex;align-items:center;gap:14px;margin-bottom:18px}.logo{width:56px;height:56px;border-radius:18px;background:rgba(37,99,235,.2);border:1px solid rgba(96,165,250,.4);display:flex;align-items:center;justify-content:center;font-size:30px}
+h1{margin:0;color:#60a5fa;font-size:28px}.subtitle{margin:4px 0 0;color:#94a3b8;font-size:14px}
+.card{background:rgba(15,23,42,.92);border:1px solid #1e293b;border-radius:26px;padding:20px;margin-bottom:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.pill{background:#0b1220;border:1px solid #334155;color:#cbd5e1;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:bold;display:inline-block;margin:2px}
+.blue{color:#bfdbfe;border-color:rgba(96,165,250,.45);background:rgba(37,99,235,.15)}.green{color:#bbf7d0;border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.13)}.red{color:#fecaca;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.13)}.amber{color:#fde68a;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.13)}
+.statement{font-size:21px;line-height:1.5;font-weight:bold;font-style:italic;border-left:4px solid #2563eb;padding-left:16px;margin:22px 0}.controls{display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}
+select{background:#0b1220;border:1px solid #334155;color:white;border-radius:16px;padding:13px;font-weight:bold;width:100%}.buttons{display:grid;grid-template-columns:1fr;gap:12px}
+button{border:0;border-radius:20px;padding:17px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:#2563eb;color:white;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+.choice{background:#020617;border:2px solid #334155}.choice.correct{border-color:#22c55e;background:rgba(34,197,94,.18);color:#bbf7d0}.choice.wrong{border-color:#ef4444;background:rgba(239,68,68,.18);color:#fecaca}.choice.blank{border-color:#f59e0b;background:rgba(245,158,11,.15);color:#fde68a}
+.explanation{display:none;margin-top:18px;padding:16px;background:rgba(37,99,235,.13);border:1px solid rgba(96,165,250,.35);border-radius:20px;line-height:1.5;color:#dbeafe}.law{margin-top:12px;padding:14px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.35);border-radius:18px;color:#fde68a}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#0b1220;border:1px solid #334155;border-radius:18px;padding:12px;text-align:center}.stat small{display:block;color:#94a3b8;font-size:11px;font-weight:bold;text-transform:uppercase}.stat b{display:block;font-size:24px;margin-top:4px}
+.error-item,.mastery-item{background:#0b1220;border:1px solid #334155;border-radius:18px;padding:14px;margin-top:10px;line-height:1.45}.mastery-bar{height:10px;background:#111827;border-radius:999px;overflow:hidden;margin-top:8px}.mastery-bar span{display:block;height:100%;background:#2563eb}.syllabus-area{background:#0b1220;border:1px solid #334155;border-radius:18px;padding:14px;margin-top:12px}.syllabus-topic{display:flex;align-items:flex-start;gap:10px;border-top:1px solid #1e293b;padding:10px 0;color:#dbeafe}.syllabus-topic:first-of-type{border-top:0}.syllabus-topic input{margin-top:3px;transform:scale(1.2)}.syllabus-topic small{display:block;color:#94a3b8;margin-top:3px}
+.tabs{position:fixed;left:12px;right:12px;bottom:12px;max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.tab{background:#0b1220;border:1px solid #334155;color:#cbd5e1;font-size:12px;padding:12px 6px}.tab.active{background:#2563eb;color:white}.hidden{display:none}
+@media(min-width:600px){.buttons{grid-template-columns:repeat(3,1fr)}.controls{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><div class="logo">🛡️</div><div><h1>PMAL Elite</h1><p class="subtitle">Login Google • Firestore • Repetição Espaçada</p></div></div>
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div class="row">
+      <div>
+        <span class="pill blue" id="authStatus">Verificando login...</span>
+        <div id="userInfo" style="margin-top:8px;color:#cbd5e1;font-size:13px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="loginGoogle()" style="padding:12px 14px;border-radius:14px;background:#16a34a;">Entrar com Google</button>
+      </div>
+    </div>
+  </div>
+
+  <section id="screen-simulado">
+    <div class="card">
+      <div class="row"><span class="pill blue" id="status">Conectando ao Firebase...</span><span class="pill amber" id="counter">0/0</span></div>
+      <div class="controls">
+        <label><span class="pill green">Cargo</span><select id="cargoSelect" onchange="changeCargo()"><option value="Soldado">Soldado</option><option value="Oficial">Oficial</option></select></label>
+        <label><span class="pill blue">Matéria</span><select id="areaSelect" onchange="changeArea()"><option value="Todas">Todas</option></select></label>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button onclick="window.open('converter_firestore.html','_blank')" style="background:#16a34a;padding:14px 18px;border-radius:16px;">
+          Importar Questões
+        </button>
+      </div>
+      <div id="topic" style="margin-top:16px;color:#93c5fd;font-weight:bold;text-transform:uppercase;font-size:12px;letter-spacing:.15em;"></div>
+      <div class="statement" id="statement">Aguarde...</div>
+      <div class="buttons">
+        <button class="choice" id="btn-certo" onclick="answerQuestion('Certo')">Certo</button>
+        <button class="choice" id="btn-errado" onclick="answerQuestion('Errado')">Errado</button>
+        <button class="choice" id="btn-branco" onclick="answerQuestion('Em branco')">Em branco</button>
+      </div>
+      <div class="explanation" id="explanation"></div>
+      <button id="nextBtn" onclick="nextQuestion()" style="margin-top:16px;" disabled>Próxima questão</button>
+    </div>
+    <div class="stats"><div class="stat"><small>Certas</small><b id="right">0</b></div><div class="stat"><small>Erradas</small><b id="wrong">0</b></div><div class="stat"><small>Branco</small><b id="blank">0</b></div><div class="stat"><small>Nota</small><b id="score">0</b></div></div>
+  </section>
+
+  <section id="screen-erros" class="hidden"><div class="card"><span class="pill red">Caderno de Erros</span><h2>Questões erradas</h2><div id="errorsList"></div></div></section>
+  <section id="screen-revisoes" class="hidden"><div class="card"><span class="pill amber">Repetição Espaçada</span><h2>Revisões pendentes</h2><p style="color:#cbd5e1">Questões erradas voltam em ciclos: hoje, 1 dia, 7 dias e 30 dias.</p><button onclick="startReviewMode()" style="margin-bottom:12px;background:#f59e0b;color:#020617;">Iniciar Revisão</button><div id="reviewsList"></div></div></section>
+  <section id="screen-dominio" class="hidden"><div class="card"><span class="pill green">Domínio por Assunto</span><h2>Mapa de desenvolvimento</h2><div id="masteryList"></div></div></section>
+  <section id="screen-estatisticas" class="hidden">
+    <div class="card">
+      <span class="pill blue">Estatísticas</span>
+      <h2>Dashboard de evolução</h2>
+      <div id="statsPanel"></div>
+    </div>
+
+    <div class="card">
+      <span class="pill green">Domínio por Matéria</span>
+      <h2>Radar de desempenho</h2>
+      <canvas id="radarChart" height="260"></canvas>
+    </div>
+
+    <div class="card">
+      <span class="pill amber">Resultado Cebraspe</span>
+      <h2>Certas x Erradas x Branco</h2>
+      <canvas id="resultChart" height="220"></canvas>
+    </div>
+
+    <div class="card">
+      <span class="pill red">Revisões</span>
+      <h2>Pendências de revisão</h2>
+      <canvas id="reviewChart" height="220"></canvas>
+    </div>
+  </section>
+  <section id="screen-edital" class="hidden">
+    <div class="card">
+      <span class="pill green">Edital Verticalizado</span>
+      <h2>Controle de estudo do edital</h2>
+      <p style="color:#cbd5e1;line-height:1.5;">Marque os assuntos já estudados. O progresso fica salvo na sua conta Google.</p>
+      <div id="syllabusProgress" style="margin:12px 0;"></div>
+      <div id="syllabusList"></div>
+    </div>
+  </section>
+
+  <section id="screen-ajustes" class="hidden">
+    <div class="card">
+      <span class="pill amber">Ajustes</span>
+      <h2>Configurações da conta</h2>
+      <p style="color:#cbd5e1;line-height:1.5;">Use esta área para ações administrativas durante a fase de validação do PMAL Elite.</p>
+      <div style="display:grid;gap:10px;margin-top:14px;">
+        <button onclick="resetValidationData()" style="background:#dc2626;">Resetar Validação</button>
+        <button onclick="logoutUser()" style="background:#334155;">Sair da Conta</button>
+      </div>
+    </div>
+  </section>
+  <section id="screen-mentor" class="hidden"><div class="card"><span class="pill blue">Mentor PMAL</span><h2>Relatório do desempenho</h2><div id="mentorReport" style="white-space:pre-wrap;line-height:1.55;color:#dbeafe;"></div></div></section>
+</div>
+
+<div class="tabs" style="grid-template-columns:1fr 90px;">
+  <button class="tab active" onclick="showScreen('simulado')" id="tab-simulado">Simulado</button>
+  <button class="tab" onclick="toggleMoreMenu()" id="tab-mais">•••</button>
+</div>
+<div id="moreMenu" class="hidden" style="position:fixed;right:12px;bottom:70px;background:#0f172a;border:1px solid #334155;border-radius:18px;padding:10px;z-index:99;box-shadow:0 20px 60px rgba(0,0,0,.45);min-width:210px;">
+  <button class="tab" onclick="showScreen('erros')" id="tab-erros" style="width:100%;margin-bottom:8px;">Erros</button>
+  <button class="tab" onclick="showScreen('revisoes')" id="tab-revisoes" style="width:100%;margin-bottom:8px;">Revisões</button>
+  <button class="tab" onclick="showScreen('dominio')" id="tab-dominio" style="width:100%;margin-bottom:8px;">Domínio</button>
+  <button class="tab" onclick="showScreen('estatisticas')" id="tab-estatisticas" style="width:100%;margin-bottom:8px;">Estatísticas</button>
+  <button class="tab" onclick="showScreen('mentor')" id="tab-mentor" style="width:100%;margin-bottom:8px;">Mentor</button>
+  <button class="tab" onclick="showScreen('edital')" id="tab-edital" style="width:100%;margin-bottom:8px;">Edital</button>
+  <button class="tab" onclick="showScreen('ajustes')" id="tab-ajustes" style="width:100%;">Ajustes</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCTbgYNBryyLnT6wzBdsi7xGTrLi2d17Dc",
+  authDomain: "pmal-elite.firebaseapp.com",
+  projectId: "pmal-elite",
+  storageBucket: "pmal-elite.firebasestorage.app",
+  messagingSenderId: "337195212188",
+  appId: "1:337195212188:web:1dec9f3e7c9e9de856bc59"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let userId=null, allQuestions=[], questions=[], currentIndex=0, locked=false;
+let state={answers:[],errors:[],mastery:{},reviews:{},syllabus:{},cargo:"Soldado",area:"Todas"};
+let reviewMode=false;
+let reviewQuestions=[];
+
+window.answerQuestion=answerQuestion; window.nextQuestion=nextQuestion; window.showScreen=showScreen; window.changeCargo=changeCargo; window.changeArea=changeArea; window.startReviewMode=startReviewMode; window.loginGoogle=loginGoogle; window.logoutUser=logoutUser; window.toggleMoreMenu=toggleMoreMenu; window.resetValidationData=resetValidationData; window.toggleSyllabusItem=toggleSyllabusItem;
+
+
+async function loginGoogle(){
+  try{
+    localStorage.setItem("pmalResetOnGoogleLogin", "true");
+    const provider=new GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    await signInWithPopup(auth,provider);
+  }catch(e){
+    console.error(e);
+    alert("Erro ao entrar com Google: "+e.message);
+  }
+}
+async function logoutUser(){
+  try{
+    await signOut(auth);
+    location.reload();
+  }catch(e){
+    alert("Erro ao sair: "+e.message);
+  }
+}
+function mergeUniqueByKey(a,b,keyFn){
+  const map=new Map();
+  [...(a||[]),...(b||[])].forEach(item=>map.set(keyFn(item),item));
+  return [...map.values()];
+}
+async function mergePendingMigration(user){
+  if(!user || user.isAnonymous) return;
+  const raw=localStorage.getItem("pmalPendingMigration");
+  if(!raw) return;
+  try{
+    const old=JSON.parse(raw);
+    state.answers=mergeUniqueByKey(state.answers, old.answers||[], x=>`${x.questionId||""}-${x.date||""}-${x.result||""}`);
+    state.errors=mergeUniqueByKey(state.errors, old.errors||[], x=>`${x.questionId||""}-${x.date||""}-${x.userAnswer||""}`);
+    state.reviews={...(old.reviews||{}),...(state.reviews||{})};
+    state.mastery=buildMasteryFromAnswers(state.answers);
+    await saveCloudState();
+    localStorage.removeItem("pmalPendingMigration");
+  }catch(e){
+    console.warn("Falha na migração local:",e);
+  }
+}
+function renderAuth(user){
+  const authStatus=document.getElementById("authStatus");
+  const userInfo=document.getElementById("userInfo");
+  if(!authStatus || !userInfo) return;
+  if(!user){
+    authStatus.textContent="Sem login";
+    authStatus.className="pill red";
+    userInfo.textContent="";
+    return;
+  }
+  if(user.isAnonymous){
+    authStatus.textContent="Login anônimo";
+    authStatus.className="pill amber";
+    userInfo.textContent="Progresso vinculado temporariamente a este navegador. Use Google para sincronizar.";
+  }else{
+    authStatus.textContent="Google conectado";
+    authStatus.className="pill green";
+    userInfo.textContent=user.email ? `Conta: ${user.email}` : "Conta Google conectada.";
+  }
+}
+
+
+function emptyProgressState(){
+  state.answers=[];
+  state.errors=[];
+  state.mastery={};
+  state.reviews={};
+  state.area="Todas";
+  currentIndex=0;
+}
+async function resetValidationData(){
+  const ok = confirm("Deseja zerar respostas, erros, revisões, domínio e estatísticas desta conta para validação?");
+  if(!ok) return;
+
+  emptyProgressState();
+  localStorage.removeItem("pmalPendingMigration");
+  localStorage.removeItem("pmalResetOnGoogleLogin");
+
+  await saveCloudState();
+
+  updateStats();
+  renderErrors();
+  renderReviews();
+  renderMastery();
+  renderStatsPanel();
+  renderMentor();
+
+  alert("Dados de validação zerados com sucesso.");
+  showScreen("simulado");
+}
+
+async function resetProgressForValidationIfNeeded(user){
+  if(!user || user.isAnonymous) return;
+  if(localStorage.getItem("pmalResetOnGoogleLogin")==="true"){
+    emptyProgressState();
+    await saveCloudState();
+    localStorage.removeItem("pmalResetOnGoogleLogin");
+  }
+}
+
+async function init(){
+  document.getElementById("status").textContent="Autenticando...";
+  onAuthStateChanged(auth, async user=>{
+    if(user){
+      renderAuth(user);
+      userId=user.uid;
+      await loadCloudState();
+      await resetProgressForValidationIfNeeded(user);
+      await loadFirestoreQuestions();
+      rebuildAreaSelect();
+      applyFilters();
+      updateStats(); renderErrors(); renderReviews(); renderMastery(); renderStatsPanel(); renderSyllabus(); renderMentor();
+    }else{
+      await signInAnonymously(auth);
+    }
+  });
+}
+
+async function loadCloudState(){
+  try{
+    const ref=doc(db,"users",userId), snap=await getDoc(ref);
+    if(snap.exists()){
+      const data=snap.data();
+      state.answers=data.answers||[]; state.errors=data.errors||[]; state.mastery=data.mastery||buildMasteryFromAnswers(state.answers); state.reviews=data.reviews||{}; state.syllabus=data.syllabus||{}; state.cargo=data.cargo||"Soldado"; state.area=data.area||"Todas";
+    }else{
+      await setDoc(ref,{createdAt:new Date().toISOString(),answers:[],errors:[],mastery:{},reviews:{},syllabus:{},cargo:state.cargo,area:state.area});
+    }
+    document.getElementById("cargoSelect").value=state.cargo;
+  }catch(e){console.error(e);document.getElementById("status").textContent="Erro Firebase";}
+}
+
+async function loadFirestoreQuestions(){
+  document.getElementById("status").textContent="Carregando questões online...";
+  allQuestions=[];
+  const snap=await getDocs(collection(db,"questions"));
+  snap.forEach(d=>{ const q=d.data(); if(q && q.id && q.statement) allQuestions.push({...q, firestoreDocId:d.id}); });
+  document.getElementById("status").textContent=`${allQuestions.length} questões online`;
+}
+
+function rebuildAreaSelect(){
+  const select=document.getElementById("areaSelect");
+  const areas=[...new Set(allQuestions.filter(q=>questionCargoOk(q,state.cargo)).map(q=>q.area))].sort();
+  select.innerHTML='<option value="Todas">Todas</option>'+areas.map(a=>`<option value="${a}">${a}</option>`).join("");
+  if(!areas.includes(state.area)&&state.area!=="Todas") state.area="Todas";
+  select.value=state.area;
+}
+
+function questionCargoOk(q,cargo){
+  if(!q.cargo) return true;
+  if(Array.isArray(q.cargo)) return q.cargo.includes(cargo);
+  return String(q.cargo).includes(cargo);
+}
+
+function applyFilters(){
+  questions=allQuestions.filter(q=>questionCargoOk(q,state.cargo)).filter(q=>state.area==="Todas"||q.area===state.area);
+  currentIndex=0;
+  if(questions.length) renderQuestion();
+  else{
+    document.getElementById("topic").textContent="";
+    document.getElementById("statement").textContent="Nenhuma questão encontrada para esse filtro. Importe novas questões pelo converter_firestore.html.";
+    document.getElementById("counter").textContent="0/0";
+  }
+  document.getElementById("status").textContent=`${questions.length} questões carregadas`;
+}
+
+async function changeCargo(){state.cargo=document.getElementById("cargoSelect").value;state.area="Todas";rebuildAreaSelect();applyFilters();await saveCloudState();updateStats();renderErrors();renderMastery();renderMentor();}
+async function changeArea(){state.area=document.getElementById("areaSelect").value;applyFilters();await saveCloudState();}
+
+async function saveCloudState(){
+  if(!userId)return;
+  await setDoc(doc(db,"users",userId),{updatedAt:new Date().toISOString(),answers:state.answers,errors:state.errors,mastery:state.mastery,reviews:state.reviews,syllabus:state.syllabus,cargo:state.cargo,area:state.area},{merge:true});
+}
+async function saveAnswerLog(a){if(!userId)return;await addDoc(collection(db,"users",userId,"answers"),{...a,createdAt:serverTimestamp()});}
+async function saveErrorLog(e){if(!userId)return;await addDoc(collection(db,"users",userId,"errors"),{...e,createdAt:serverTimestamp()});}
+
+
+function addDaysISO(days){
+  const d=new Date();
+  d.setDate(d.getDate()+days);
+  d.setHours(0,0,0,0);
+  return d.toISOString();
+}
+function todayStart(){
+  const d=new Date();
+  d.setHours(0,0,0,0);
+  return d;
+}
+function isDue(review){
+  if(!review||!review.nextReview)return false;
+  return new Date(review.nextReview)<=todayStart();
+}
+function getReviewStageNext(stage,result){
+  if(result==="wrong") return {stage:1, days:1, status:"pendente"};
+  if(result==="blank") return {stage:stage||1, days:1, status:"pendente"};
+  const nextStage=(stage||1)+1;
+  if(nextStage>=4) return {stage:4, days:30, status:"dominada"};
+  if(nextStage===2) return {stage:2, days:7, status:"pendente"};
+  if(nextStage===3) return {stage:3, days:30, status:"pendente"};
+  return {stage:1, days:1, status:"pendente"};
+}
+function updateReview(q,result){
+  const key=q.id;
+  const current=state.reviews[key]||{questionId:q.id,stage:0,status:"pendente"};
+  const next=getReviewStageNext(current.stage,result);
+  state.reviews[key]={
+    questionId:q.id,
+    cargo:state.cargo,
+    area:q.area,
+    topic:q.topic,
+    subtopic:q.subtopic||"",
+    statement:q.statement,
+    answer:q.answer,
+    explanation:q.explanation||"",
+    legalBasis:q.legalBasis||"",
+    firestoreDocId:q.firestoreDocId||"",
+    stage:next.stage,
+    status:next.status,
+    lastResult:result,
+    lastDate:new Date().toISOString(),
+    nextReview:addDaysISO(next.days)
+  };
+}
+function dueReviews(){
+  return Object.values(state.reviews||{}).filter(r=>(r.cargo===state.cargo)&&r.status!=="dominada"&&isDue(r));
+}
+function renderReviews(){
+  const box=document.getElementById("reviewsList");
+  if(!box)return;
+  const due=dueReviews();
+  const pending=Object.values(state.reviews||{}).filter(r=>r.cargo===state.cargo&&r.status!=="dominada");
+  if(!pending.length){box.innerHTML='<div class="error-item">Nenhuma revisão cadastrada ainda. Erre uma questão para ela entrar no ciclo de revisão.</div>';return;}
+  if(!due.length){box.innerHTML=`<div class="error-item">Nenhuma revisão vencida hoje.<br><br><span class="pill amber">Pendentes futuras: ${pending.length}</span></div>`;return;}
+  box.innerHTML=due.map(r=>`<div class="error-item"><strong>${r.area} • ${r.topic}${r.subtopic?" • "+r.subtopic:""}</strong><br><br>${r.statement}<br><br><span class="pill amber">Etapa: ${r.stage}</span><span class="pill red">Vencida</span><br><br><strong>Fundamento:</strong><br>${r.legalBasis||"Não cadastrado."}</div>`).join("");
+}
+function startReviewMode(){
+  const due=dueReviews();
+  if(!due.length){alert("Nenhuma revisão pendente para hoje.");return;}
+  reviewMode=true;
+  reviewQuestions=due.map(r=>({
+    id:r.questionId,
+    area:r.area,
+    topic:r.topic,
+    subtopic:r.subtopic||"",
+    statement:r.statement,
+    answer:r.answer,
+    explanation:r.explanation,
+    legalBasis:r.legalBasis,
+    firestoreDocId:r.firestoreDocId||""
+  }));
+  questions=reviewQuestions;
+  currentIndex=0;
+  showScreen("simulado");
+  renderQuestion();
+  document.getElementById("status").textContent=`Modo revisão: ${questions.length} pendentes`;
+}
+
+function currentQuestion(){return questions[currentIndex%questions.length];}
+function masteryKey(q){return `${state.cargo}||${q.area}||${q.topic}||${q.subtopic||""}`;}
+function updateMastery(q,result){
+  const key=masteryKey(q);
+  if(!state.mastery[key]) state.mastery[key]={cargo:state.cargo,area:q.area,topic:q.topic,subtopic:q.subtopic||"",seen:0,right:0,wrong:0,blank:0,mastery:0,lastResult:null,lastDate:null};
+  const m=state.mastery[key];m.seen++;if(result==="right")m.right++;if(result==="wrong")m.wrong++;if(result==="blank")m.blank++;m.mastery=m.seen?Math.round((m.right/m.seen)*100):0;m.lastResult=result;m.lastDate=new Date().toISOString();
+}
+function buildMasteryFromAnswers(answers){
+  const obj={}; answers.forEach(a=>{const key=`${a.cargo||"Geral"}||${a.area}||${a.topic}||${a.subtopic||""}`; if(!obj[key])obj[key]={cargo:a.cargo||"Geral",area:a.area,topic:a.topic,subtopic:a.subtopic||"",seen:0,right:0,wrong:0,blank:0,mastery:0,lastResult:null,lastDate:null}; const m=obj[key];m.seen++;if(a.result==="right")m.right++;if(a.result==="wrong")m.wrong++;if(a.result==="blank")m.blank++;m.mastery=Math.round((m.right/m.seen)*100);m.lastResult=a.result;m.lastDate=a.date;}); return obj;
+}
+function renderQuestion(){
+  if(!questions.length)return; locked=false; const q=currentQuestion();
+  document.getElementById("counter").textContent=`${currentIndex+1}/${questions.length}`;
+  document.getElementById("topic").textContent=`${q.area} • ${q.topic}${q.subtopic?" • "+q.subtopic:""} • ${q.id}`;
+  document.getElementById("statement").textContent="“"+q.statement+"”";
+  document.getElementById("explanation").style.display="none";document.getElementById("explanation").innerHTML="";document.getElementById("nextBtn").disabled=true;
+  ["btn-certo","btn-errado","btn-branco"].forEach(id=>{const btn=document.getElementById(id);btn.className="choice";btn.disabled=false;});
+}
+async function answerQuestion(choice){
+  if(locked||!questions.length)return; locked=true; const q=currentQuestion(); const result=choice==="Em branco"?"blank":(choice===q.answer?"right":"wrong");
+  const answerRecord={questionId:q.id,cargo:state.cargo,area:q.area,topic:q.topic,subtopic:q.subtopic||"",difficulty:q.difficulty||"",firestoreDocId:q.firestoreDocId||"",userAnswer:choice,correctAnswer:q.answer,result,date:new Date().toISOString()};
+  state.answers.push(answerRecord); updateMastery(q,result); updateReview(q,result);
+  if(result==="wrong"){const errorRecord={questionId:q.id,cargo:state.cargo,area:q.area,topic:q.topic,subtopic:q.subtopic||"",statement:q.statement,userAnswer:choice,correctAnswer:q.answer,explanation:q.explanation,legalBasis:q.legalBasis,firestoreDocId:q.firestoreDocId||"",date:new Date().toISOString(),status:"pendente"};state.errors.push(errorRecord);await saveErrorLog(errorRecord);}
+  await saveAnswerLog(answerRecord); await saveCloudState();
+
+  if(q.answer==="Certo")document.getElementById("btn-certo").classList.add("correct");
+  if(q.answer==="Errado")document.getElementById("btn-errado").classList.add("correct");
+  if(choice==="Certo"&&result==="wrong")document.getElementById("btn-certo").classList.add("wrong");
+  if(choice==="Errado"&&result==="wrong")document.getElementById("btn-errado").classList.add("wrong");
+  if(choice==="Em branco")document.getElementById("btn-branco").classList.add("blank");
+  ["btn-certo","btn-errado","btn-branco"].forEach(id=>document.getElementById(id).disabled=true);
+  const exp=document.getElementById("explanation");exp.style.display="block";exp.innerHTML=`<strong>Comentário estratégico:</strong><br>${q.explanation||"Sem explicação cadastrada."}<div class="law"><strong>Fundamento:</strong><br>${q.legalBasis||"Fundamento ainda não cadastrado."}</div>`;
+  document.getElementById("nextBtn").disabled=false; updateStats(); renderErrors(); renderReviews(); renderMastery(); renderStatsPanel(); renderSyllabus(); renderMentor();
+}
+function nextQuestion(){if(!questions.length)return;currentIndex++;if(currentIndex>=questions.length){if(reviewMode){alert("Revisão concluída! O ciclo de repetição espaçada foi atualizado.");reviewMode=false;reviewQuestions=[];applyFilters();currentIndex=0;showScreen("mentor");return;}alert("Simulado concluído! Veja o caderno de erros, domínio e relatório do mentor.");currentIndex=0;showScreen("mentor");}renderQuestion();}
+function filteredAnswers(){return state.answers.filter(a=>a.cargo===state.cargo);}
+function updateStats(){const fa=filteredAnswers(),r=fa.filter(a=>a.result==="right").length,w=fa.filter(a=>a.result==="wrong").length,b=fa.filter(a=>a.result==="blank").length;document.getElementById("right").textContent=r;document.getElementById("wrong").textContent=w;document.getElementById("blank").textContent=b;document.getElementById("score").textContent=r-w;}
+function renderErrors(){const box=document.getElementById("errorsList"),errors=state.errors.filter(e=>e.cargo===state.cargo);if(!errors.length){box.innerHTML='<div class="error-item">Nenhum erro registrado ainda para este cargo.</div>';return;}box.innerHTML=errors.slice().reverse().map(e=>`<div class="error-item"><strong>${e.area} • ${e.topic}${e.subtopic?" • "+e.subtopic:""}</strong><br><br>${e.statement}<br><br><span class="pill red">Sua resposta: ${e.userAnswer}</span><span class="pill green">Gabarito: ${e.correctAnswer}</span><br><br><strong>Explicação:</strong><br>${e.explanation||""}<div class="law"><strong>Fundamento:</strong><br>${e.legalBasis||"Não cadastrado."}</div></div>`).join("");}
+function masteryTone(m){if(m.mastery>=80)return"green";if(m.mastery>=60)return"amber";return"red";}
+function renderMastery(){const box=document.getElementById("masteryList"),list=Object.values(state.mastery||{}).filter(m=>m.cargo===state.cargo||m.cargo==="Geral").sort((a,b)=>a.mastery-b.mastery);if(!list.length){box.innerHTML='<div class="mastery-item">Responda questões para gerar o mapa de domínio.</div>';return;}box.innerHTML=list.map(m=>`<div class="mastery-item"><div class="row"><strong>${m.area} • ${m.topic}${m.subtopic?" • "+m.subtopic:""}</strong><span class="pill ${masteryTone(m)}">${m.mastery}% domínio</span></div><div class="mastery-bar"><span style="width:${m.mastery}%"></span></div><br><span class="pill blue">Vistas: ${m.seen}</span><span class="pill green">Certas: ${m.right}</span><span class="pill red">Erradas: ${m.wrong}</span><span class="pill amber">Branco: ${m.blank}</span></div>`).join("");}
+function renderMentor(){
+  const fa=filteredAnswers(),total=fa.length,right=fa.filter(a=>a.result==="right").length,wrong=fa.filter(a=>a.result==="wrong").length,blank=fa.filter(a=>a.result==="blank").length,score=right-wrong,precision=total?Math.round((right/total)*100):0;
+  const masteryList=Object.values(state.mastery||{}).filter(m=>m.cargo===state.cargo||m.cargo==="Geral").sort((a,b)=>a.mastery-b.mastery),critical=masteryList.find(m=>m.seen>=1&&m.mastery<60),strong=masteryList.find(m=>m.seen>=1&&m.mastery>=80);
+  let report="";
+  if(!total)report=`Cargo atual: ${state.cargo}\nBanco online carregado: ${questions.length} questões.\nRevisões pendentes hoje: ${dueReviews().length}\n\nResponda algumas questões para que o mentor identifique seus pontos fortes e fracos.`;
+  else{report+=`Cargo: ${state.cargo}\nBanco online atual: ${questions.length} questões\nRevisões pendentes hoje: ${dueReviews().length}\nQuestões respondidas: ${total}\nCertas: ${right}\nErradas: ${wrong}\nEm branco: ${blank}\nNota Cebraspe: ${score}\nPrecisão: ${precision}%\n\n`;if(precision<60)report+="Diagnóstico: base fraca. Priorize teoria e revisão dos erros antes de aumentar o volume.\n\n";else if(precision<70)report+="Diagnóstico: zona de risco. Você precisa reduzir erros para melhorar a nota líquida.\n\n";else if(precision<80)report+="Diagnóstico: competitivo, mas ainda instável. Foque nos assuntos com erro recorrente.\n\n";else report+="Diagnóstico: bom desempenho. Agora o foco é consistência e simulados maiores.\n\n";if(critical)report+=`Assunto crítico: ${critical.area} • ${critical.topic}${critical.subtopic?" • "+critical.subtopic:""} (${critical.mastery}% domínio)\nAção: revisar a teoria e resolver um bloco focado nesse assunto.\n\n`;if(strong)report+=`Ponto forte: ${strong.area} • ${strong.topic}${strong.subtopic?" • "+strong.subtopic:""} (${strong.mastery}% domínio)\n\n`;report+="Missão seguinte: revisar o caderno de erros e elevar todos os assuntos críticos para pelo menos 70% de domínio.";}
+  document.getElementById("mentorReport").textContent=report;
+}
+
+
+const SYLLABUS_PMAL = [
+  {area:"Língua Portuguesa", topics:[
+    "Interpretação e compreensão de textos",
+    "Tipologia textual",
+    "Ortografia oficial",
+    "Acentuação gráfica",
+    "Emprego das classes de palavras",
+    "Concordância verbal e nominal",
+    "Regência verbal e nominal",
+    "Crase",
+    "Pontuação",
+    "Coesão e coerência textual",
+    "Sintaxe da oração e do período",
+    "Semântica e significação das palavras"
+  ]},
+  {area:"Matemática e Raciocínio Lógico", topics:[
+    "Operações com números inteiros, racionais e reais",
+    "Razão e proporção",
+    "Regra de três simples e composta",
+    "Porcentagem",
+    "Equações do 1º e 2º grau",
+    "Sistemas de equações",
+    "Funções",
+    "Geometria plana",
+    "Geometria espacial",
+    "Estatística básica",
+    "Probabilidade",
+    "Análise combinatória",
+    "Raciocínio lógico proposicional"
+  ]},
+  {area:"Informática", topics:[
+    "Conceitos de hardware e software",
+    "Sistema operacional Windows",
+    "Editores de texto",
+    "Planilhas eletrônicas",
+    "Navegadores e internet",
+    "Correio eletrônico",
+    "Segurança da informação",
+    "Malwares",
+    "Phishing e engenharia social",
+    "Backup",
+    "Computação em nuvem",
+    "Redes de computadores"
+  ]},
+  {area:"Conhecimentos de Alagoas", topics:[
+    "História de Alagoas",
+    "Formação territorial de Alagoas",
+    "Aspectos econômicos de Alagoas",
+    "Aspectos sociais de Alagoas",
+    "Geografia física de Alagoas",
+    "Geografia humana de Alagoas",
+    "Cultura alagoana",
+    "Política e administração pública em Alagoas",
+    "Segurança pública em Alagoas"
+  ]},
+  {area:"Direito Constitucional", topics:[
+    "Princípios fundamentais",
+    "Direitos e garantias fundamentais",
+    "Direitos individuais e coletivos",
+    "Direitos sociais",
+    "Nacionalidade",
+    "Direitos políticos",
+    "Organização do Estado",
+    "Administração Pública",
+    "Poder Executivo",
+    "Poder Legislativo",
+    "Poder Judiciário",
+    "Funções essenciais à Justiça",
+    "Defesa do Estado e das instituições democráticas",
+    "Segurança pública",
+    "Controle de constitucionalidade",
+    "Remédios constitucionais"
+  ]},
+  {area:"Direito Administrativo", topics:[
+    "Princípios da Administração Pública",
+    "Organização administrativa",
+    "Administração direta e indireta",
+    "Atos administrativos",
+    "Anulação, revogação e convalidação",
+    "Poderes administrativos",
+    "Poder de polícia",
+    "Agentes públicos",
+    "Responsabilidade civil do Estado",
+    "Serviços públicos",
+    "Controle da Administração Pública",
+    "Improbidade administrativa",
+    "Licitações e contratos administrativos"
+  ]},
+  {area:"Direitos Humanos", topics:[
+    "Teoria geral dos Direitos Humanos",
+    "Declaração Universal dos Direitos Humanos",
+    "Sistema global de proteção",
+    "Sistema interamericano de proteção",
+    "Convenção Americana sobre Direitos Humanos",
+    "Pacto de San José da Costa Rica",
+    "Direitos humanos e segurança pública",
+    "Uso progressivo da força",
+    "Tortura e tratamento degradante",
+    "Regras de Mandela",
+    "Direitos das pessoas presas",
+    "Igualdade e não discriminação"
+  ]},
+  {area:"Direito Penal", topics:[
+    "Aplicação da lei penal",
+    "Tempo e lugar do crime",
+    "Teoria do crime",
+    "Fato típico",
+    "Ilicitude",
+    "Culpabilidade",
+    "Concurso de pessoas",
+    "Penas",
+    "Extinção da punibilidade",
+    "Crimes contra a pessoa",
+    "Crimes contra o patrimônio",
+    "Crimes contra a Administração Pública"
+  ]},
+  {area:"Processo Penal", topics:[
+    "Inquérito policial",
+    "Ação penal",
+    "Jurisdição e competência",
+    "Provas",
+    "Prisão em flagrante",
+    "Prisão preventiva",
+    "Medidas cautelares",
+    "Liberdade provisória",
+    "Processo e procedimento",
+    "Citações e intimações",
+    "Sentença",
+    "Recursos"
+  ]},
+  {area:"Direito Penal Militar", topics:[
+    "Aplicação da lei penal militar",
+    "Crime militar",
+    "Crimes militares em tempo de paz",
+    "Crimes contra a autoridade ou disciplina militar",
+    "Crimes contra o serviço militar",
+    "Crimes contra a Administração Militar",
+    "Penas no Código Penal Militar",
+    "Concurso de agentes",
+    "Extinção da punibilidade"
+  ]},
+  {area:"Processo Penal Militar", topics:[
+    "Inquérito Policial Militar",
+    "Ação penal militar",
+    "Polícia judiciária militar",
+    "Competência da Justiça Militar",
+    "Prisão em flagrante militar",
+    "Menagem",
+    "Processo ordinário",
+    "Citações e intimações no CPPM",
+    "Sentença e recursos",
+    "Execução penal militar"
+  ]},
+  {area:"Legislação PMAL", topics:[
+    "Estatuto dos Policiais Militares",
+    "Hierarquia e disciplina",
+    "Direitos e deveres do policial militar",
+    "Ética policial militar",
+    "Transgressões disciplinares",
+    "Sanções disciplinares",
+    "Organização básica da PMAL",
+    "Regime jurídico militar estadual",
+    "Carreira policial militar"
+  ]},
+  {area:"Legislação Especial", topics:[
+    "Lei de abuso de autoridade",
+    "Estatuto do Desarmamento",
+    "Lei de drogas",
+    "Lei Maria da Penha",
+    "Crimes hediondos",
+    "Estatuto da Criança e do Adolescente",
+    "Estatuto do Idoso",
+    "Lei de tortura",
+    "Lei de organizações criminosas",
+    "Lei de juizados especiais criminais"
+  ]}
+];
+
+function syllabusKey(area,topic){
+  return `${area}||${topic}`;
+}
+async function toggleSyllabusItem(area,topic,checked){
+  const key=syllabusKey(area,topic);
+  state.syllabus[key]={
+    area,
+    topic,
+    studied:checked,
+    updatedAt:new Date().toISOString()
+  };
+  await saveCloudState();
+  renderSyllabus();
+}
+function renderSyllabus(){
+  const box=document.getElementById("syllabusList");
+  const progress=document.getElementById("syllabusProgress");
+  if(!box||!progress)return;
+
+  const total=SYLLABUS_PMAL.reduce((sum,a)=>sum+a.topics.length,0);
+  const studied=SYLLABUS_PMAL.reduce((sum,a)=>sum+a.topics.filter(t=>state.syllabus[syllabusKey(a.area,t)]?.studied).length,0);
+  const pct=total?Math.round((studied/total)*100):0;
+
+  progress.innerHTML=`
+    <div class="mastery-item">
+      <div class="row"><strong>Progresso do edital</strong><span class="pill ${pct>=80?'green':pct>=50?'amber':'red'}">${pct}%</span></div>
+      <div class="mastery-bar"><span style="width:${pct}%"></span></div>
+      <br><span class="pill blue">${studied}/${total} assuntos estudados</span>
+    </div>
+  `;
+
+  box.innerHTML=SYLLABUS_PMAL.map(area=>{
+    const studiedArea=area.topics.filter(t=>state.syllabus[syllabusKey(area.area,t)]?.studied).length;
+    const pctArea=area.topics.length?Math.round((studiedArea/area.topics.length)*100):0;
+    const topics=area.topics.map(topic=>{
+      const checked=state.syllabus[syllabusKey(area.area,topic)]?.studied?'checked':'';
+      return `<label class="syllabus-topic">
+        <input type="checkbox" ${checked} onchange="toggleSyllabusItem('${area.area.replace(/'/g,"\\'")}','${topic.replace(/'/g,"\\'")}',this.checked)">
+        <span>${topic}<small>${area.area}</small></span>
+      </label>`;
+    }).join("");
+    return `<div class="syllabus-area">
+      <div class="row"><h3 style="margin:0;color:#bfdbfe;">${area.area}</h3><span class="pill ${pctArea>=80?'green':pctArea>=50?'amber':'red'}">${studiedArea}/${area.topics.length}</span></div>
+      <div class="mastery-bar"><span style="width:${pctArea}%"></span></div>
+      <div style="margin-top:8px;">${topics}</div>
+    </div>`;
+  }).join("");
+}
+
+function toggleMoreMenu(){
+  const menu=document.getElementById("moreMenu");
+  if(menu) menu.classList.toggle("hidden");
+}
+function closeMoreMenu(){
+  const menu=document.getElementById("moreMenu");
+  if(menu) menu.classList.add("hidden");
+}
+
+let radarChartInstance=null;
+let resultChartInstance=null;
+let reviewChartInstance=null;
+
+function destroyChart(chart){
+  if(chart){ chart.destroy(); }
+}
+
+function areaStats(){
+  const fa=filteredAnswers();
+  const byArea={};
+  fa.forEach(a=>{
+    if(!byArea[a.area]) byArea[a.area]={total:0,right:0,wrong:0,blank:0};
+    byArea[a.area].total++;
+    if(a.result==="right") byArea[a.area].right++;
+    if(a.result==="wrong") byArea[a.area].wrong++;
+    if(a.result==="blank") byArea[a.area].blank++;
+  });
+  return byArea;
+}
+
+function reviewBuckets(){
+  const now=new Date();
+  now.setHours(0,0,0,0);
+  const tomorrow=new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+  const week=new Date(now); week.setDate(week.getDate()+7);
+
+  let atrasadas=0, hoje=0, semana=0, futuras=0;
+
+  Object.values(state.reviews||{}).forEach(r=>{
+    if(r.cargo!==state.cargo || r.status==="dominada" || !r.nextReview) return;
+    const d=new Date(r.nextReview);
+    if(d<now) atrasadas++;
+    else if(d.getTime()===now.getTime()) hoje++;
+    else if(d<=week) semana++;
+    else futuras++;
+  });
+
+  return {atrasadas, hoje, semana, futuras};
+}
+
+function renderCharts(){
+  if(typeof Chart==="undefined") return;
+
+  const byArea=areaStats();
+  const labels=Object.keys(byArea);
+  const mastery=labels.map(area=>{
+    const v=byArea[area];
+    return v.total?Math.round((v.right/v.total)*100):0;
+  });
+
+  const radarCtx=document.getElementById("radarChart");
+  if(radarCtx){
+    destroyChart(radarChartInstance);
+    radarChartInstance=new Chart(radarCtx,{
+      type:"radar",
+      data:{
+        labels: labels.length?labels:["Sem dados"],
+        datasets:[{
+          label:"Domínio (%)",
+          data: mastery.length?mastery:[0],
+          borderWidth:2
+        }]
+      },
+      options:{
+        responsive:true,
+        scales:{r:{beginAtZero:true,max:100,ticks:{display:true}}},
+        plugins:{legend:{display:true}}
+      }
+    });
+  }
+
+  const fa=filteredAnswers();
+  const right=fa.filter(a=>a.result==="right").length;
+  const wrong=fa.filter(a=>a.result==="wrong").length;
+  const blank=fa.filter(a=>a.result==="blank").length;
+
+  const resultCtx=document.getElementById("resultChart");
+  if(resultCtx){
+    destroyChart(resultChartInstance);
+    resultChartInstance=new Chart(resultCtx,{
+      type:"bar",
+      data:{
+        labels:["Certas","Erradas","Branco"],
+        datasets:[{
+          label:"Quantidade",
+          data:[right,wrong,blank],
+          borderWidth:1
+        }]
+      },
+      options:{
+        responsive:true,
+        scales:{y:{beginAtZero:true,ticks:{precision:0}}},
+        plugins:{legend:{display:false}}
+      }
+    });
+  }
+
+  const buckets=reviewBuckets();
+  const reviewCtx=document.getElementById("reviewChart");
+  if(reviewCtx){
+    destroyChart(reviewChartInstance);
+    reviewChartInstance=new Chart(reviewCtx,{
+      type:"doughnut",
+      data:{
+        labels:["Atrasadas","Hoje","Próx. 7 dias","Futuras"],
+        datasets:[{
+          label:"Revisões",
+          data:[buckets.atrasadas,buckets.hoje,buckets.semana,buckets.futuras],
+          borderWidth:1
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{position:"bottom"}}
+      }
+    });
+  }
+}
+
+function renderStatsPanel(){
+  const box=document.getElementById("statsPanel");
+  if(!box)return;
+  const fa=filteredAnswers();
+  const total=fa.length;
+  const right=fa.filter(a=>a.result==="right").length;
+  const wrong=fa.filter(a=>a.result==="wrong").length;
+  const blank=fa.filter(a=>a.result==="blank").length;
+  const precision=total?Math.round((right/total)*100):0;
+  const due=dueReviews().length;
+  const byArea={};
+  fa.forEach(a=>{
+    if(!byArea[a.area])byArea[a.area]={total:0,right:0,wrong:0,blank:0};
+    byArea[a.area].total++;
+    if(a.result==="right")byArea[a.area].right++;
+    if(a.result==="wrong")byArea[a.area].wrong++;
+    if(a.result==="blank")byArea[a.area].blank++;
+  });
+  const areaRows=Object.entries(byArea).map(([area,v])=>{
+    const p=v.total?Math.round((v.right/v.total)*100):0;
+    return `<div class="mastery-item"><div class="row"><strong>${area}</strong><span class="pill ${p>=80?'green':p>=60?'amber':'red'}">${p}%</span></div><br><span class="pill blue">Total: ${v.total}</span><span class="pill green">Certas: ${v.right}</span><span class="pill red">Erradas: ${v.wrong}</span><span class="pill amber">Branco: ${v.blank}</span></div>`;
+  }).join("");
+  box.innerHTML=`
+    <div class="stats" style="margin-bottom:12px;">
+      <div class="stat"><small>Respondidas</small><b>${total}</b></div>
+      <div class="stat"><small>Precisão</small><b>${precision}%</b></div>
+      <div class="stat"><small>Nota</small><b>${right-wrong}</b></div>
+      <div class="stat"><small>Revisões</small><b>${due}</b></div>
+    </div>
+    ${areaRows || '<div class="mastery-item">Ainda não há estatísticas. Responda algumas questões primeiro.</div>'}
+  `;
+  setTimeout(renderCharts, 50);
+}
+
+function showScreen(screen){closeMoreMenu();document.getElementById("screen-simulado").classList.toggle("hidden",screen!=="simulado");document.getElementById("screen-erros").classList.toggle("hidden",screen!=="erros");document.getElementById("screen-revisoes").classList.toggle("hidden",screen!=="revisoes");document.getElementById("screen-dominio").classList.toggle("hidden",screen!=="dominio");document.getElementById("screen-estatisticas").classList.toggle("hidden",screen!=="estatisticas");document.getElementById("screen-edital").classList.toggle("hidden",screen!=="edital");document.getElementById("screen-ajustes").classList.toggle("hidden",screen!=="ajustes");document.getElementById("screen-mentor").classList.toggle("hidden",screen!=="mentor");["simulado","erros","revisoes","dominio","estatisticas","mentor","edital","ajustes"].forEach(s=>{const el=document.getElementById("tab-"+s);if(el)el.classList.toggle("active",s===screen);});if(screen==="erros")renderErrors();if(screen==="revisoes")renderReviews();if(screen==="dominio")renderMastery();if(screen==="estatisticas"){renderStatsPanel();setTimeout(renderCharts,80);}if(screen==="mentor")renderMentor();if(screen==="edital")renderSyllabus();}
+init();
+</script>
+</body>
+</html>
